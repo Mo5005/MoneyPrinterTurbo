@@ -605,10 +605,19 @@ def search_videos_pixabay(
                 if not isinstance(video_url, str) or not video_url:
                     continue
                 # Pixabay 很少返回原生方形视频；1:1 输出继续接受满足分辨率的
-                # 候选并由合成阶段裁剪。横竖屏则必须严格匹配目标方向。
-                orientation_matches = aspect == VideoAspect.square or (
-                    _matches_video_aspect(w, h, aspect)
-                )
+                # 候选并由合成阶段裁剪。
+                #
+                # LOCAL PATCH: 竖屏目标不再强制要求素材本身是竖屏。
+                # Pixabay 的素材库几乎全是横屏（实测每 50 条命中中有 47-50 条
+                # 横屏），严格方向匹配会让 9:16 任务每个关键词只剩 0-3 条可用
+                # 素材，成片只能把少数几个片段反复循环。
+                #
+                # 下面保留的 `w >= video_width and h >= video_height` 门槛保证
+                # 素材在两个方向上都不小于目标画布，因此 VideoFitMode.cover
+                # 的居中裁剪只会缩小、不会放大，不存在画质损失；原注释担心的
+                # 黑边只会出现在 contain 模式下，所以 video_fit_mode 必须保持
+                # "cover"。
+                orientation_matches = True
                 if orientation_matches and w >= video_width and h >= video_height:
                     item = MaterialInfo()
                     item.provider = "pixabay"
